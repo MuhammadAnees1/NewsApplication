@@ -1,6 +1,5 @@
 package com.example.newsapplication;
 
-
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,11 +11,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.newsapplication.databinding.NewsLayoutBinding;
 
 import java.util.ArrayList;
-
 public class ProductAdaptor extends RecyclerView.Adapter<ProductAdaptor.ProductViewHolder>{
     Context context;
     ArrayList<ItemsClass> classArrayList;
-
     public ProductAdaptor(Context context, ArrayList<ItemsClass> products) {
         this.context = context;
         this.classArrayList = products;

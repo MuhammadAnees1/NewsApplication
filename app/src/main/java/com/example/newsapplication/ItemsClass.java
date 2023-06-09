@@ -3,6 +3,7 @@ package com.example.newsapplication;
 import java.io.Serializable;
 
 public class ItemsClass implements Serializable {
+
     private String id, name, description, url, category, language, country;
 
     public ItemsClass(String id, String name, String description, String url, String category, String language, String country) {
