@@ -1,21 +1,19 @@
 package com.example.newsapplication;
-
 import android.os.Bundle;
+import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
 import com.example.newsapplication.databinding.ActivityMainBinding;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.kwabenaberko.newsapilib.NewsApiClient;
+import com.kwabenaberko.newsapilib.models.Article;
+import com.kwabenaberko.newsapilib.models.Source;
+import com.kwabenaberko.newsapilib.models.request.EverythingRequest;
+import com.kwabenaberko.newsapilib.models.request.SourcesRequest;
+import com.kwabenaberko.newsapilib.models.request.TopHeadlinesRequest;
+import com.kwabenaberko.newsapilib.models.response.ArticleResponse;
+import com.kwabenaberko.newsapilib.models.response.SourcesResponse;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,74 +21,107 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     // binding is use to connect directly by xml.layout
     ActivityMainBinding binding;
-    ProductAdaptor productAdaptor;
-//    make array for store api data in it
+    ProductAdaptor productAdapter;
     ArrayList<ItemsClass> classArrayList;
-
+    private static final String API_KEY = "c75a163488ab4a06b4713098e0a11e07";
+    private NewsApiClient newsApiClient;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        newsApiClient = new NewsApiClient(API_KEY);
+
         initProducts();
     }
 
     void initProducts() {
         classArrayList = new ArrayList<>();
-        productAdaptor = new ProductAdaptor(this, classArrayList);
+        productAdapter = new ProductAdaptor(this, classArrayList);
 
         getRecentNews();
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         binding.recycleView1.setLayoutManager(layoutManager);
-        binding.recycleView1.setAdapter(productAdaptor);
+        binding.recycleView1.setAdapter(productAdapter);
     }
 
-
     void getRecentNews() {
-        RequestQueue queue = Volley.newRequestQueue(this);
-// make array object
-        List<ItemsClass> sources = new ArrayList<>();
+        EverythingRequest everythingRequest = new EverythingRequest.Builder()
+                .q("trump")
+                .build();
 
-//        StringRequest used to send HTTP requests and receive string responses.
-        StringRequest request = new StringRequest(Request.Method.GET,Constants. API_BASE_URL, new Response.Listener<String>() {
+        newsApiClient.getEverything(everythingRequest, new NewsApiClient.ArticlesResponseCallback() {
             @Override
-            public void onResponse(String response) {
-                try {
+            public void onSuccess(ArticleResponse response) {
 
-//                create a JSONObject from the response string.This line of code is important because the response received from the API is in the form of a JSON string.
-                    JSONObject object = new JSONObject(response);
-                    if (object.getString("status").equals("ok")) {
-//                    make JSON array for getting data in the api array
+                List<Article> articles = response.getArticles();
+                if (articles != null && !articles.isEmpty()) {
+                    for (Article article : articles) {
+                        String name = article.getTitle();
+                        String description = article.getDescription();
+                        String url = article.getUrl();
+                        String category = article.getContent();
+                        String language = article.getPublishedAt();
+                        String country = article.getContent();
 
-                        JSONArray sourcesArray = object.getJSONArray("sources");
-                        for (int i = 0; i < sourcesArray.length(); i++) {
-                            JSONObject sourceObj = sourcesArray.getJSONObject(i);
-
-                            ItemsClass source = new ItemsClass(
-                                    sourceObj.getString("id"),
-                                    sourceObj.getString("name"),
-                                    sourceObj.getString("description"),
-                                    sourceObj.getString("url"),
-                                    sourceObj.getString("category"),
-                                    sourceObj.getString("language"),
-                                    sourceObj.getString("country")
-                            );
-                            sources.add(source);
-                        }
-                        productAdaptor.notifyDataSetChanged();
+                        classArrayList.add(new ItemsClass(name,description,url,category,language,country));
+                        // Add the retrieved data to the list
                     }
-                } catch (JSONException e) {
-                    e.printStackTrace();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            productAdapter.notifyDataSetChanged(); // Notify the adapter of the data change
+                        }
+                    });
                 }
             }
-        }, new Response.ErrorListener() {
             @Override
-            public void onErrorResponse(VolleyError error) {
-                error.printStackTrace();
+            public void onFailure(Throwable throwable) {
+                Log.e("NewsApiClient", "Failed to get recent news: " + throwable.getMessage());
             }
         });
-        queue.add(request);
+    TopHeadlinesRequest topHeadlinesRequest = new TopHeadlinesRequest.Builder()
+                .q("bitcoin")
+                .language("en")
+                .build();
+        newsApiClient.getTopHeadlines(topHeadlinesRequest, new NewsApiClient.ArticlesResponseCallback() {
+            @Override
+            public void onSuccess(ArticleResponse response) {
+                List<Article> articles = response.getArticles();
+                if (articles != null && !articles.isEmpty()) {
+                    Article firstArticle = articles.get(0);
+                    String title = firstArticle.getTitle();
+                    // Use the article title as needed
+                    Log.d("NewsApiClient", "First article title: " + title);
+                }
+            }
+            @Override
+            public void onFailure(Throwable throwable) {
+                Log.e("NewsApiClient", "Failed to get top headlines: " + throwable.getMessage());
+            }
+        });
+
+        SourcesRequest sourcesRequest = new SourcesRequest.Builder()
+                .language("en")
+                .country("us")
+                .build();
+        newsApiClient.getSources(sourcesRequest, new NewsApiClient.SourcesCallback() {
+            @Override
+            public void onSuccess(SourcesResponse response) {
+                List<Source> sources = response.getSources();
+                if (sources != null && !sources.isEmpty()) {
+                    Source firstSource = sources.get(0);
+                    String name = firstSource.getName();
+                    // Use the source name as needed
+                    Log.d("NewsApiClient", "First source name: " + name);
+                }
+            }
+            @Override
+            public void onFailure(Throwable throwable) {
+                Log.e("NewsApiClient", "Failed to get sources: " + throwable.getMessage());
+            }
+        });
     }
 }
